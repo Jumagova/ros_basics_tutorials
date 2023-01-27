@@ -64,34 +64,34 @@ def rotate (velocity_publisher,angular_speed_degree,relative_angle_degree,clockw
     velocity_publisher.publish(velocity_message)
 
 def go_to_goal (velocity_publisher, x_goal, y_goal):
-     def go_to_goal (velocity_publisher, x_goal, y_goal):
-        global x, y, yaw
+    
+    global x, y, yaw
         
-        velocity_message = Twist()
+    velocity_message = Twist()
+
+    distance = abs (math.sqrt (((x_goal - x)**2)+(y_goal - y)**2))
+    if distance < 0.01:
+        rospy.loginfo("Turtle is already at the goal point.")
+        return
+    while True:
+        K_linear = 0.5
 
         distance = abs (math.sqrt (((x_goal - x)**2)+(y_goal - y)**2))
-        if distance < 0.01:
-            rospy.loginfo("Turtle is already at the goal point.")
-            return
-        while True:
-            K_linear = 0.5
+        linear_speed = distance * K_linear
 
-            distance = abs (math.sqrt (((x_goal - x)**2)+(y_goal - y)**2))
-            linear_speed = distance * K_linear
+        K_angular = 4.0
+        desired_angle_goal = math.atan2(y_goal - y,x_goal-x)
+        angular_speed = (desired_angle_goal - yaw)*K_angular
 
-            K_angular = 4.0
-            desired_angle_goal = math.atan2(y_goal - y,x_goal-x)
-            angular_speed = (desired_angle_goal - yaw)*K_angular
+        velocity_message.linear.x = linear_speed
+        velocity_message.angular.z = angular_speed
 
-            velocity_message.linear.x = linear_speed
-            velocity_message.angular.z = angular_speed
+        velocity_publisher.publish(velocity_message)
+        rospy.loginfo("x = %f   y = %f    distance to goal = %f",x,y,distance)
 
-            velocity_publisher.publish(velocity_message)
-            rospy.loginfo("x = %f   y = %f    distance to goal = %f",x,y,distance)
-
-            if (distance < 0.01):
-                rospy.loginfo("reached")
-                break
+        if (distance < 0.01):
+            rospy.loginfo("reached")
+            break
 
 def poseCallback (pose_message):
         global x
@@ -129,11 +129,29 @@ def spiral (velocity_publisher, wk, rk):
 
     vel_msg.linear.x = 0
     vel_msg.angular.z = 0
+    velocity_publisher.publish (vel_msg)
+    
+def gridClean (publisher):
 
-    velocity_publisher.publish (vel_msg )
+    desired_pose = Pose()
+    desired_pose.x = 1
+    desired_pose.y = 1
+    desired_pose.theta = 1
 
+    go_to_goal(publisher,1,1)
 
+    setDesiredOrientation(publisher,30,math.radians(desired_pose.theta))
 
+    for i in range (5):
+        move(publisher,2.0,1.0,True)
+        rotate (publisher,20,90,False)
+        move(publisher,2.0,9.0,True)
+        rotate (publisher,20,90,True)
+        move(publisher,2.0,1.0,True)
+        rotate (publisher,20,90,True)
+        move(publisher,2.0,9.0,True)
+        rotate (publisher,20,90,False)
+ 
 if __name__ == '__main__':
     try:
 
@@ -151,6 +169,8 @@ if __name__ == '__main__':
         ##rotate (velocity_publisher,90,90,True)
         ##go_to_goal (velocity_publisher,5,5)
         ##setDesiredOrientation(velocity_publisher,30,90)
+        ##spiral (velocity_publisher,2,0)
+        gridClean (velocity_publisher)
         
     except rospy.ROSInterruptException:
         rospy.loginfo ("node terminated")
